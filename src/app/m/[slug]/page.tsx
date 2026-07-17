@@ -1,4 +1,5 @@
 import Image from "next/image";
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { createClient } from "@/lib/supabase/server";
@@ -177,9 +178,9 @@ export default async function PublicMenuPage({
 
       <footer className="mt-12 px-4 text-center text-xs text-neutral-400">
         Meniu digital de la{" "}
-        <a href="/" className="underline hover:text-neutral-600">
+        <Link href="/" className="underline hover:text-neutral-600">
           FTF Consulting
-        </a>
+        </Link>
       </footer>
     </main>
   );
