@@ -6,6 +6,10 @@ Platforma de servicii digitale a [FTF Consulting](https://ftfconsulting.ro) (CAE
    din pozele preparatelor (fal.ai / Kling image-to-video) — abonament lunar.
 2. **Audit SEO self-service** — clientul introduce URL-ul, primește raport cu
    scor și recomandări; lead-urile de implementare ajung în `service_requests`.
+3. **Director local de afaceri** (`director/`, aplicație separată cu domeniu
+   propriu) — „vitrina orașului”: profiluri de afaceri cu poze/video/rating
+   Google, pe categorii și specialități („unde mănânci ramen în Iași”).
+   Listare gratuită + plan „Promovat” lunar. Oraș pilot: Iași.
 
 ## Stack
 
@@ -85,11 +89,33 @@ src/
 supabase/migrations/      # schema completă + RLS + bucket-uri storage
 ```
 
+## Directorul local (`director/`)
+
+Aplicație Next.js separată (port 3001, domeniu dedicat), care folosește
+**același proiect Supabase** (aceleași conturi de utilizator; tabelele din
+`supabase/migrations/0003_director.sql`).
+
+```bash
+cd director
+cp .env.example .env    # aceleași chei Supabase + brandul directorului
+npm install
+npm run dev             # http://localhost:3001
+```
+
+Rute principale: `/` (home), `/iasi` (orașul pilot), `/iasi/restaurante`
+(categorie), `/iasi/gust/ramen` (specialitate), `/firma/<slug>` (profil cu
+JSON-LD LocalBusiness și contor de vizite), `/cont` (proprietari), `/admin`
+(moderare listări/revendicări — necesită `profiles.is_admin`).
+
+Deploy: `docker compose --profile director up -d --build`. Pentru planul
+„Promovat” configurează `STRIPE_PRICE_FEATURED` + un webhook Stripe separat
+către `<domeniul-directorului>/api/stripe/webhook`.
+
 ## Verificări
 
 ```bash
-npm run lint
-npm run build
+npm run lint && npm run build            # platforma
+cd director && npm run lint && npm run build   # directorul
 ```
 
-CI-ul (GitHub Actions) rulează ambele la fiecare push.
+CI-ul (GitHub Actions) rulează lint + build pentru ambele aplicații la fiecare push.

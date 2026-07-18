@@ -10,3 +10,19 @@ services:
     ports:
       - "3000:3000"
     restart: unless-stopped
+
+  # Directorul local de afaceri (domeniu separat, același Supabase).
+  # Rulează cu: docker compose --profile director up -d
+  director:
+    profiles: ["director"]
+    build:
+      context: ./director
+      args:
+        NEXT_PUBLIC_SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL}
+        NEXT_PUBLIC_SUPABASE_ANON_KEY: ${NEXT_PUBLIC_SUPABASE_ANON_KEY}
+        NEXT_PUBLIC_SITE_URL: ${DIRECTOR_SITE_URL:-http://localhost:3001}
+        NEXT_PUBLIC_DIRECTOR_NAME: ${DIRECTOR_NAME:-Descoperă Local}
+    env_file: director/.env
+    ports:
+      - "3001:3001"
+    restart: unless-stopped
