@@ -5,5 +5,6 @@ import nextTs from "eslint-config-next/typescript";
 export default defineConfig([
   ...nextVitals,
   ...nextTs,
-  globalIgnores([".next/**", "node_modules/**", "out/**"]),
+  // director/ e aplicație separată, cu propriul eslint/tsconfig
+  globalIgnores([".next/**", "node_modules/**", "out/**", "director/**"]),
 ]);
