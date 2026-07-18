@@ -53,3 +53,36 @@ export async function startCheckout(formData: FormData) {
 
   redirect(session.url!);
 }
+
+/** Portalul Stripe — clientul își gestionează singur plata/anularea. */
+export async function openBillingPortal() {
+  const restaurant = await getOwnedRestaurant();
+  if (!restaurant) redirect("/app");
+  if (!isStripeConfigured()) {
+    redirect(`/app/abonament?error=${encodeURIComponent("Plățile nu sunt configurate.")}`);
+  }
+
+  const supabase = await createClient();
+  const { data: subscription } = await supabase
+    .from("subscriptions")
+    .select("stripe_customer_id")
+    .eq("restaurant_id", restaurant.id)
+    .not("stripe_customer_id", "is", null)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (!subscription?.stripe_customer_id) {
+    redirect(
+      `/app/abonament?error=${encodeURIComponent("Nu există încă un abonament plătit pentru acest cont.")}`
+    );
+  }
+
+  const stripe = getStripe();
+  const portal = await stripe.billingPortal.sessions.create({
+    customer: subscription.stripe_customer_id,
+    return_url: `${process.env.NEXT_PUBLIC_SITE_URL}/app/abonament`,
+  });
+
+  redirect(portal.url);
+}

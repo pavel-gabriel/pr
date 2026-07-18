@@ -3,7 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { PLANS } from "@/lib/plans";
 import { isStripeConfigured } from "@/lib/stripe";
 import { getOwnedRestaurant } from "../actions";
-import { startCheckout } from "./actions";
+import { openBillingPortal, startCheckout } from "./actions";
 
 export const metadata = { title: "Abonament" };
 
@@ -53,6 +53,13 @@ export default async function SubscriptionPage({
             {new Date(subscription.current_period_end).toLocaleDateString("ro-RO")}{" "}
             · status: {subscription.status}
           </p>
+        )}
+        {subscription?.stripe_customer_id && (
+          <form action={openBillingPortal} className="mt-3">
+            <button className="text-sm text-emerald-700 underline hover:text-emerald-600">
+              Gestionează plata / anulează abonamentul →
+            </button>
+          </form>
         )}
       </div>
 

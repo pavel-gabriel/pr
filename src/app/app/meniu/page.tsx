@@ -208,6 +208,11 @@ export default async function MenuAdminPage({
                   placeholder="Preț (lei) *"
                   className="rounded-lg border border-neutral-300 px-3 py-2 text-sm"
                 />
+                <input
+                  name="name_en"
+                  placeholder="Nume (EN, opțional)"
+                  className="rounded-lg border border-neutral-300 px-3 py-2 text-sm sm:col-span-2"
+                />
                 <textarea
                   name="description"
                   placeholder="Descriere (ingrediente, gramaj)"

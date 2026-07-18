@@ -3,7 +3,7 @@
 import { redirect } from "next/navigation";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { runAudit } from "@/lib/seo/run-audit";
-import { sendAdminEmail } from "@/lib/email";
+import { sendAdminEmail, sendEmail } from "@/lib/email";
 
 function normalizeUrl(raw: string): string | null {
   const value = raw.trim();
@@ -36,6 +36,11 @@ export async function createAudit(formData: FormData) {
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     redirect(`/seo?error=${encodeURIComponent("Introdu o adresă de email validă.")}`);
   }
+  if (formData.get("gdpr") !== "on") {
+    redirect(
+      `/seo?error=${encodeURIComponent("Bifează acordul de prelucrare a datelor pentru a continua.")}`
+    );
+  }
 
   const admin = createAdminClient();
 
@@ -65,6 +70,20 @@ export async function createAudit(formData: FormData) {
 
   try {
     await runAudit(audit.id, url);
+    await sendEmail(
+      email,
+      `Raportul SEO pentru ${url}`,
+      [
+        "Salut!",
+        "",
+        `Analiza SEO pentru ${url} este gata. Vezi raportul complet aici:`,
+        `${process.env.NEXT_PUBLIC_SITE_URL}/seo/raport/${audit.id}`,
+        "",
+        "Dacă vrei să rezolvăm noi problemele găsite, cere o ofertă direct din raport.",
+        "",
+        "FTF Consulting · ftfconsulting.ro",
+      ].join("\n")
+    );
   } catch {
     // Raportul va afișa starea „failed” cu detalii.
   }

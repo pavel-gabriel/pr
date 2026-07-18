@@ -110,7 +110,11 @@ export default function Home() {
         © {new Date().getFullYear()} FTF Consulting ·{" "}
         <a href="https://ftfconsulting.ro" className="hover:text-emerald-600">
           ftfconsulting.ro
-        </a>
+        </a>{" "}
+        ·{" "}
+        <Link href="/confidentialitate" className="hover:text-emerald-600">
+          Confidențialitate
+        </Link>
       </footer>
     </main>
   );

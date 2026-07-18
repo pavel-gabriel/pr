@@ -78,7 +78,9 @@ export async function POST(request: Request) {
         completed_at: new Date().toISOString(),
       })
       .eq("id", job.id);
-    if (job.menu_item_id) {
+    // Doar clipurile 16:9 intră în meniu; cele verticale sunt pentru
+    // social media și rămân descărcabile din istoric.
+    if (job.menu_item_id && job.aspect_ratio !== "9:16") {
       await admin
         .from("menu_items")
         .update({ video_url: publicUrl })

@@ -114,6 +114,19 @@ export default async function VideoPage({
                     placeholder="Instrucțiuni extra (opțional)"
                     className="w-full rounded-lg border border-neutral-200 px-3 py-1.5 text-xs"
                   />
+                  <select
+                    name="aspect_ratio"
+                    className="w-full rounded-lg border border-neutral-200 px-3 py-1.5 text-xs"
+                    defaultValue="16:9"
+                  >
+                    <option value="16:9">Format meniu (16:9)</option>
+                    <option
+                      value="9:16"
+                      disabled={restaurant.plan === "start"}
+                    >
+                      Vertical Reels/TikTok (9:16){restaurant.plan === "start" ? " — plan Pro" : ""}
+                    </option>
+                  </select>
                   <button
                     className="w-full rounded-lg bg-emerald-600 py-2 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
                     disabled={remaining === 0}
@@ -135,6 +148,7 @@ export default async function VideoPage({
               <thead className="bg-neutral-50 text-left text-neutral-500">
                 <tr>
                   <th className="px-4 py-2 font-medium">Data</th>
+                  <th className="px-4 py-2 font-medium">Format</th>
                   <th className="px-4 py-2 font-medium">Status</th>
                   <th className="px-4 py-2 font-medium">Rezultat</th>
                 </tr>
@@ -144,6 +158,9 @@ export default async function VideoPage({
                   <tr key={job.id} className="border-t border-neutral-100">
                     <td className="px-4 py-2 text-neutral-600">
                       {new Date(job.created_at).toLocaleString("ro-RO")}
+                    </td>
+                    <td className="px-4 py-2 text-neutral-600">
+                      {job.aspect_ratio === "9:16" ? "Vertical 9:16" : "Meniu 16:9"}
                     </td>
                     <td className="px-4 py-2">
                       <span

@@ -14,6 +14,12 @@ export default async function DashboardLayout({
   } = await supabase.auth.getUser();
   if (!user) redirect("/login?next=/app");
 
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("is_admin")
+    .eq("id", user.id)
+    .maybeSingle();
+
   return (
     <div className="min-h-screen bg-neutral-50">
       <header className="border-b border-neutral-200 bg-white">
@@ -34,6 +40,11 @@ export default async function DashboardLayout({
             <Link href="/app/abonament" className="hover:text-emerald-600">
               Abonament
             </Link>
+            {profile?.is_admin && (
+              <Link href="/app/admin" className="font-medium text-emerald-700 hover:text-emerald-600">
+                Lead-uri
+              </Link>
+            )}
             <form action={signOut}>
               <button className="text-neutral-500 hover:text-red-600">Ieși</button>
             </form>

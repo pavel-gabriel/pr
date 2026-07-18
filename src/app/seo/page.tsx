@@ -72,6 +72,16 @@ export default async function SeoPage({
               className="w-full rounded-lg border border-neutral-300 px-3 py-2.5 focus:border-emerald-600 focus:outline-none"
             />
           </div>
+          <label className="flex items-start gap-2 text-xs text-neutral-500">
+            <input type="checkbox" name="gdpr" required className="mt-0.5" />
+            <span>
+              Sunt de acord cu prelucrarea datelor conform{" "}
+              <Link href="/confidentialitate" className="underline">
+                politicii de confidențialitate
+              </Link>{" "}
+              pentru a primi raportul și oferta aferentă. *
+            </span>
+          </label>
           <button className="w-full rounded-lg bg-emerald-600 py-3 font-medium text-white hover:bg-emerald-700">
             Analizează site-ul →
           </button>

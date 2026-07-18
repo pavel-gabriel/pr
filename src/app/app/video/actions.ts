@@ -42,6 +42,12 @@ export async function generateVideo(formData: FormData) {
 
   const itemId = String(formData.get("item_id") ?? "");
   const customPrompt = String(formData.get("prompt") ?? "").trim();
+  const requestedRatio = String(formData.get("aspect_ratio") ?? "16:9");
+  // Exportul vertical e beneficiu de plan Pro (trial-ul îl are ca demo).
+  const canVertical = restaurant.plan === "pro" || restaurant.plan === "trial";
+  const aspectRatio = (
+    requestedRatio === "9:16" && canVertical ? "9:16" : "16:9"
+  ) as "16:9" | "9:16";
 
   const supabase = await createClient();
   const { data: item } = await supabase
@@ -74,6 +80,7 @@ export async function generateVideo(formData: FormData) {
       menu_item_id: item.id,
       source_image_url: item.image_url,
       prompt: customPrompt || null,
+      aspect_ratio: aspectRatio,
     })
     .select("id")
     .single();
@@ -85,6 +92,7 @@ export async function generateVideo(formData: FormData) {
     const requestId = await submitVideoJob({
       imageUrl: item.image_url,
       prompt: customPrompt || undefined,
+      aspectRatio,
     });
     await supabase
       .from("video_jobs")
@@ -136,7 +144,9 @@ export async function refreshJob(formData: FormData) {
             completed_at: new Date().toISOString(),
           })
           .eq("id", job.id);
-        if (job.menu_item_id) {
+        // Doar clipurile 16:9 intră în meniu; cele verticale sunt pentru
+        // social media și rămân descărcabile din istoric.
+        if (job.menu_item_id && job.aspect_ratio !== "9:16") {
           await admin
             .from("menu_items")
             .update({ video_url: publicUrl })

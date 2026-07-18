@@ -22,6 +22,7 @@ function configuredFal() {
 export async function submitVideoJob(opts: {
   imageUrl: string;
   prompt?: string;
+  aspectRatio?: "16:9" | "9:16" | "1:1";
 }): Promise<string> {
   const client = configuredFal();
   const model = process.env.FAL_VIDEO_MODEL || DEFAULT_MODEL;
@@ -32,6 +33,7 @@ export async function submitVideoJob(opts: {
       prompt: opts.prompt || DEFAULT_FOOD_PROMPT,
       image_url: opts.imageUrl,
       duration: "5",
+      aspect_ratio: opts.aspectRatio ?? "16:9",
     },
     webhookUrl,
   });

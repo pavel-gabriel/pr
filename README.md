@@ -21,8 +21,8 @@ Platforma de servicii digitale a [FTF Consulting](https://ftfconsulting.ro) (CAE
 # 1. Instalează dependențele
 npm install
 
-# 2. Creează un proiect Supabase (gratuit) și rulează migrația:
-#    Supabase Dashboard → SQL Editor → conținutul din supabase/migrations/0001_init.sql
+# 2. Creează un proiect Supabase (gratuit) și rulează migrațiile în ordine:
+#    Supabase Dashboard → SQL Editor → fișierele din supabase/migrations/
 
 # 3. Configurează mediul
 cp .env.example .env

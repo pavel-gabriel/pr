@@ -48,6 +48,7 @@ export interface VideoJob {
   source_image_url: string;
   prompt: string | null;
   status: VideoJobStatus;
+  aspect_ratio: "16:9" | "9:16" | "1:1";
   provider_request_id: string | null;
   result_video_url: string | null;
   error: string | null;
