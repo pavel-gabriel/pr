@@ -6,6 +6,12 @@ export const revalidate = 3600;
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const base = siteUrl();
+
+  // La build (CI/Docker) cheile Supabase pot lipsi — sitemap-ul se
+  // regenerează oricum la rulare (revalidate), deci întoarcem minimul.
+  if (!process.env.SUPABASE_SERVICE_ROLE_KEY || !process.env.NEXT_PUBLIC_SUPABASE_URL) {
+    return [{ url: base, changeFrequency: "daily" }];
+  }
   const admin = createAdminClient();
 
   const [{ data: cities }, { data: categories }, { data: tags }, { data: listings }] =
