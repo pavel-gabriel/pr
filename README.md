@@ -107,6 +107,13 @@ Rute principale: `/` (home), `/iasi` (orașul pilot), `/iasi/restaurante`
 JSON-LD LocalBusiness și contor de vizite), `/cont` (proprietari), `/admin`
 (moderare listări/revendicări — necesită `profiles.is_admin`).
 
+**Asistentul AI de recomandări**: widget de chat pe toate paginile publice —
+scrii „restaurant chinezesc cu nota 4.5+” și primești recomandări din listări.
+Cererea e transformată în filtre (categorie, specialități, rating minim) prin
+API-ul Claude (`ANTHROPIC_API_KEY`, model implicit `claude-opus-4-8`); fără
+cheie, endpoint-ul `/api/asistent` folosește un parser local mai simplu, deci
+funcționează și fără AI. Rate limit 10 cereri/min per IP.
+
 Deploy: `docker compose --profile director up -d --build`. Pentru planul
 „Promovat” configurează `STRIPE_PRICE_FEATURED` + un webhook Stripe separat
 către `<domeniul-directorului>/api/stripe/webhook`.

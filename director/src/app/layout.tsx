@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { SITE_NAME } from "@/lib/types";
+import { AssistantWidget } from "@/components/assistant-widget";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -40,6 +41,7 @@ export default function RootLayout({
           </div>
         </header>
         {children}
+        <AssistantWidget />
         <footer className="mt-16 border-t border-neutral-200 bg-white py-8 text-center text-sm text-neutral-500">
           © {new Date().getFullYear()} {SITE_NAME} · un produs{" "}
           <a href="https://ftfconsulting.ro" className="underline hover:text-orange-600">
