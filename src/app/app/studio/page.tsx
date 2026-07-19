@@ -2,8 +2,10 @@ import Image from "next/image";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { redirect } from "next/navigation";
+import Link from "next/link";
 import { STUDIO_PROMPTS, isVideoConfigured } from "@/lib/video/fal";
 import { isTextAiConfigured } from "@/lib/ai";
+import { POSTER_FORMATS, POSTER_STYLES } from "@/lib/poster";
 import { getOwnedRestaurant } from "../actions";
 import {
   generatePostAction,
@@ -12,6 +14,7 @@ import {
   refreshStudioJob,
   reviewReplyAction,
 } from "./actions";
+import { createPoster } from "./poster-actions";
 
 export const metadata = { title: "Studio de promovare" };
 
@@ -55,7 +58,7 @@ export default async function StudioPage({
   ]);
 
   const admin = createAdminClient();
-  const [{ data: videos }, { data: texts }] = await Promise.all([
+  const [{ data: videos }, { data: texts }, { data: posters }] = await Promise.all([
     admin
       .from("promo_videos")
       .select("*")
@@ -68,9 +71,26 @@ export default async function StudioPage({
       .eq("owner_id", user.id)
       .order("created_at", { ascending: false })
       .limit(5),
+    admin
+      .from("promo_posters")
+      .select("id, format, style, content, svg_url, created_at")
+      .eq("owner_id", user.id)
+      .order("created_at", { ascending: false })
+      .limit(8),
   ]);
   const promoVideos = (videos ?? []) as PromoVideo[];
   const promoTexts = (texts ?? []) as PromoText[];
+  const promoPosters = (posters ?? []) as {
+    id: string;
+    format: string;
+    style: string;
+    content: { headline?: string };
+    svg_url: string;
+    created_at: string;
+  }[];
+  const defaultQrLink = restaurant
+    ? `${process.env.NEXT_PUBLIC_SITE_URL}/m/${restaurant.slug}`
+    : "";
 
   return (
     <div>
@@ -258,6 +278,119 @@ export default async function StudioPage({
             Generează 3 variante
           </button>
         </form>
+      </section>
+
+      {/* ── Afișe ── */}
+      <section id="afise" className="mb-10 rounded-xl bg-white p-6 shadow-sm">
+        <h2 className="text-lg font-bold">🖼 Afișe — pentru print sau social media</h2>
+        <p className="mt-1 text-sm text-neutral-600">
+          Creezi un afiș cu poza, culorile și textele tale (sau lași AI-ul să
+          scrie textele). Primești SVG vectorial pentru tipografie, PNG pentru
+          postări și varianta de printat direct.
+        </p>
+        <form action={createPoster} className="mt-4 grid gap-3 sm:grid-cols-2">
+          <div>
+            <label htmlFor="p_format" className="mb-1 block text-sm font-medium">
+              Format
+            </label>
+            <select id="p_format" name="format" className={input}>
+              {Object.entries(POSTER_FORMATS).map(([key, f]) => (
+                <option key={key} value={key}>
+                  {f.label}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label htmlFor="p_style" className="mb-1 block text-sm font-medium">
+              Stil
+            </label>
+            <select id="p_style" name="style" className={input}>
+              {Object.entries(POSTER_STYLES).map(([key, s]) => (
+                <option key={key} value={key}>
+                  {s.label}
+                </option>
+              ))}
+            </select>
+          </div>
+          <input
+            name="business_name"
+            required
+            defaultValue={restaurant?.name ?? ""}
+            placeholder="Numele afacerii *"
+            className={input}
+          />
+          <div className="flex items-center gap-3">
+            <label htmlFor="p_color" className="text-sm font-medium">
+              Culoarea brandului
+            </label>
+            <input
+              id="p_color"
+              name="brand_color"
+              type="color"
+              defaultValue={restaurant?.brand_color ?? "#059669"}
+            />
+          </div>
+          <input
+            name="headline"
+            placeholder="Titlul afișului (max ~6 cuvinte) — sau lasă gol și scrie descrierea de mai jos"
+            className={`${input} sm:col-span-2`}
+          />
+          <textarea
+            name="brief"
+            rows={2}
+            placeholder="Descrie ce promovezi și AI-ul scrie titlul, subtitlul și CTA-ul (ex: reducere 20% la toate pizzele în februarie)"
+            className={`${input} sm:col-span-2`}
+          />
+          <input name="subtitle" placeholder="Subtitlu (opțional)" className={input} />
+          <input name="cta" placeholder="Buton/CTA (ex: Rezervă acum)" className={input} />
+          <input
+            name="details"
+            placeholder="Detalii: adresă, dată, program (opțional)"
+            className={`${input} sm:col-span-2`}
+          />
+          <input
+            name="qr_link"
+            defaultValue={defaultQrLink}
+            placeholder="Link pentru codul QR (opțional — meniu, site, profil)"
+            className={input}
+          />
+          <div>
+            <label htmlFor="p_photo" className="mb-1 block text-sm font-medium">
+              Poză (opțional, max 3MB)
+            </label>
+            <input id="p_photo" name="photo" type="file" accept="image/*" className="text-sm" />
+          </div>
+          <button className="rounded-lg bg-emerald-600 py-2.5 font-medium text-white hover:bg-emerald-700 sm:col-span-2">
+            Creează afișul
+          </button>
+        </form>
+
+        {promoPosters.length > 0 && (
+          <div className="mt-6">
+            <h3 className="mb-3 text-sm font-semibold text-neutral-500">Afișele tale</h3>
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+              {promoPosters.map((poster) => (
+                <Link
+                  key={poster.id}
+                  href={`/app/studio/afis/${poster.id}`}
+                  className="group overflow-hidden rounded-lg border border-neutral-100 hover:border-emerald-300"
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element -- previzualizare SVG generat */}
+                  <img
+                    src={poster.svg_url}
+                    alt={poster.content.headline ?? "Afiș"}
+                    className="aspect-[3/4] w-full bg-neutral-50 object-contain transition group-hover:scale-[1.02]"
+                  />
+                  <p className="truncate px-2 py-1.5 text-xs text-neutral-600">
+                    {poster.content.headline ?? "Afiș"} ·{" "}
+                    {POSTER_FORMATS[poster.format as keyof typeof POSTER_FORMATS]?.label.split(" — ")[0]}
+                  </p>
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
       </section>
 
       {/* ── Răspuns la recenzii ── */}

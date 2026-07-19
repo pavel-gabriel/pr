@@ -87,6 +87,59 @@ export async function generatePromoPost(
   };
 }
 
+export interface PosterCopyResult {
+  headline: string;
+  subtitle: string;
+  cta: string;
+}
+
+/** Generează textele unui afiș (headline scurt, subtitlu, CTA) dintr-un brief. */
+export async function generatePosterCopy(
+  businessName: string,
+  brief: string
+): Promise<PosterCopyResult> {
+  const client = new Anthropic();
+  const response = await client.messages.create({
+    model: model(),
+    max_tokens: 1024,
+    system:
+      "Ești un copywriter român care scrie texte pentru afișe de promovare " +
+      "(print și social media). Textele sunt scurte, percutante și fără " +
+      "clișee de reclamă. Headline-ul are maximum 6 cuvinte și e cârligul " +
+      "principal; subtitlul (1 frază) dă contextul; CTA-ul are 2-4 cuvinte.",
+    messages: [
+      {
+        role: "user",
+        content: `Afacere: ${businessName}\nCe promovează afișul: ${brief}\n\nScrie textele afișului.`,
+      },
+    ],
+    output_config: {
+      format: {
+        type: "json_schema",
+        schema: {
+          type: "object",
+          properties: {
+            headline: { type: "string", description: "Maxim 6 cuvinte, fără punct final." },
+            subtitle: { type: "string", description: "O frază de context." },
+            cta: { type: "string", description: "Îndemn scurt, 2-4 cuvinte." },
+          },
+          required: ["headline", "subtitle", "cta"],
+          additionalProperties: false,
+        },
+      },
+    },
+  });
+
+  if (response.stop_reason === "refusal") {
+    throw new Error("Cererea nu a putut fi procesată — reformulează descrierea.");
+  }
+  const textBlock = response.content.find((b) => b.type === "text");
+  if (!textBlock || textBlock.type !== "text") {
+    throw new Error("Răspuns gol de la AI.");
+  }
+  return JSON.parse(textBlock.text) as PosterCopyResult;
+}
+
 export interface ReviewReplyInput {
   businessName: string;
   rating: number;

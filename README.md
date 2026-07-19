@@ -6,6 +6,10 @@ Platforma de servicii digitale a [FTF Consulting](https://ftfconsulting.ro) (CAE
    din pozele preparatelor (fal.ai / Kling image-to-video) — abonament lunar.
 2. **Audit SEO self-service** — clientul introduce URL-ul, primește raport cu
    scor și recomandări; lead-urile de implementare ajung în `service_requests`.
+   **Studio de promovare** (`/app/studio`): video promoțional din poze pentru
+   orice afacere (locație/produs/eveniment), texte de promovare și răspunsuri
+   la recenzii cu AI (Claude), plus **afișe generate** (A4 print / pătrat /
+   story) cu poză, QR și texte scrise opțional de AI — export SVG/PNG/print.
 3. **Director local de afaceri** (`director/`, aplicație separată cu domeniu
    propriu) — „vitrina orașului”: profiluri de afaceri cu poze/video/rating
    Google, pe categorii și specialități („unde mănânci ramen în Iași”).
