@@ -14,10 +14,15 @@ import {
   submitVideoJob,
 } from "@/lib/video/fal";
 import {
+  adaptContent,
+  generateCampaign,
+  generateContentCalendar,
   generatePromoPost,
+  generateReelsScript,
   generateReviewReply,
   isTextAiConfigured,
 } from "@/lib/ai";
+import { findOccasion } from "@/lib/occasions";
 import { getOwnedRestaurant } from "../actions";
 
 async function requireUser() {
@@ -274,6 +279,150 @@ export async function generatePostAction(formData: FormData) {
     redirect(
       `/app/studio?error=${encodeURIComponent(e instanceof Error ? e.message : "Generarea a eșuat.")}`
     );
+  }
+
+  revalidatePath("/app/studio");
+  redirect("/app/studio?ok=1");
+}
+
+export async function calendarAction(formData: FormData) {
+  const user = await requireUser();
+  if (!isTextAiConfigured()) {
+    redirect(`/app/studio?error=${encodeURIComponent("Generarea de texte nu este configurată încă (lipsește cheia Anthropic).")}`);
+  }
+  await checkTextQuota(user.id);
+
+  const monthNames = [
+    "ianuarie", "februarie", "martie", "aprilie", "mai", "iunie",
+    "iulie", "august", "septembrie", "octombrie", "noiembrie", "decembrie",
+  ];
+  const monthIndex = Math.min(11, Math.max(0, parseInt(String(formData.get("month") || "0"), 10)));
+  const input = {
+    businessName: String(formData.get("business_name") ?? "").trim(),
+    businessType: String(formData.get("business_type") ?? "").trim(),
+    monthName: monthNames[monthIndex],
+    focus: String(formData.get("focus") ?? "").trim() || undefined,
+  };
+  if (!input.businessName) {
+    redirect(`/app/studio?error=${encodeURIComponent("Numele afacerii este obligatoriu.")}`);
+  }
+
+  try {
+    const result = await generateContentCalendar(input);
+    const admin = createAdminClient();
+    await admin.from("promo_texts").insert({
+      owner_id: user.id,
+      kind: "calendar",
+      input,
+      result,
+    });
+  } catch (e) {
+    redirect(`/app/studio?error=${encodeURIComponent(e instanceof Error ? e.message : "Generarea a eșuat.")}`);
+  }
+
+  revalidatePath("/app/studio");
+  redirect("/app/studio?ok=1");
+}
+
+export async function adaptAction(formData: FormData) {
+  const user = await requireUser();
+  if (!isTextAiConfigured()) {
+    redirect(`/app/studio?error=${encodeURIComponent("Generarea de texte nu este configurată încă (lipsește cheia Anthropic).")}`);
+  }
+  await checkTextQuota(user.id);
+
+  const input = {
+    businessName: String(formData.get("business_name") ?? "").trim(),
+    text: String(formData.get("text") ?? "").trim(),
+    includeEnglish: formData.get("english") === "on",
+  };
+  if (!input.businessName || !input.text) {
+    redirect(`/app/studio?error=${encodeURIComponent("Numele afacerii și textul sunt obligatorii.")}`);
+  }
+
+  try {
+    const result = await adaptContent(input);
+    const admin = createAdminClient();
+    await admin.from("promo_texts").insert({
+      owner_id: user.id,
+      kind: "adaptare",
+      input,
+      result,
+    });
+  } catch (e) {
+    redirect(`/app/studio?error=${encodeURIComponent(e instanceof Error ? e.message : "Generarea a eșuat.")}`);
+  }
+
+  revalidatePath("/app/studio");
+  redirect("/app/studio?ok=1");
+}
+
+export async function reelsAction(formData: FormData) {
+  const user = await requireUser();
+  if (!isTextAiConfigured()) {
+    redirect(`/app/studio?error=${encodeURIComponent("Generarea de texte nu este configurată încă (lipsește cheia Anthropic).")}`);
+  }
+  await checkTextQuota(user.id);
+
+  const input = {
+    businessName: String(formData.get("business_name") ?? "").trim(),
+    businessType: String(formData.get("business_type") ?? "").trim(),
+    subject: String(formData.get("subject") ?? "").trim(),
+  };
+  if (!input.businessName || !input.subject) {
+    redirect(`/app/studio?error=${encodeURIComponent("Numele afacerii și subiectul clipului sunt obligatorii.")}`);
+  }
+
+  try {
+    const result = await generateReelsScript(input);
+    const admin = createAdminClient();
+    await admin.from("promo_texts").insert({
+      owner_id: user.id,
+      kind: "reels",
+      input,
+      result,
+    });
+  } catch (e) {
+    redirect(`/app/studio?error=${encodeURIComponent(e instanceof Error ? e.message : "Generarea a eșuat.")}`);
+  }
+
+  revalidatePath("/app/studio");
+  redirect("/app/studio?ok=1");
+}
+
+export async function campaignAction(formData: FormData) {
+  const user = await requireUser();
+  if (!isTextAiConfigured()) {
+    redirect(`/app/studio?error=${encodeURIComponent("Generarea de texte nu este configurată încă (lipsește cheia Anthropic).")}`);
+  }
+  await checkTextQuota(user.id);
+
+  const occasion = findOccasion(String(formData.get("occasion") ?? ""));
+  const businessName = String(formData.get("business_name") ?? "").trim();
+  const businessType = String(formData.get("business_type") ?? "").trim();
+  if (!businessName || !occasion) {
+    redirect(`/app/studio?error=${encodeURIComponent("Numele afacerii și ocazia sunt obligatorii.")}`);
+  }
+
+  const input = {
+    businessName,
+    businessType,
+    occasionName: occasion.name,
+    occasionAngle: occasion.angle,
+    occasionDate: `${occasion.day} ${["", "ianuarie", "februarie", "martie", "aprilie", "mai", "iunie", "iulie", "august", "septembrie", "octombrie", "noiembrie", "decembrie"][occasion.month]}`,
+  };
+
+  try {
+    const result = await generateCampaign(input);
+    const admin = createAdminClient();
+    await admin.from("promo_texts").insert({
+      owner_id: user.id,
+      kind: "campanie",
+      input,
+      result,
+    });
+  } catch (e) {
+    redirect(`/app/studio?error=${encodeURIComponent(e instanceof Error ? e.message : "Generarea a eșuat.")}`);
   }
 
   revalidatePath("/app/studio");

@@ -7,14 +7,20 @@ import { STUDIO_PROMPTS, isVideoConfigured } from "@/lib/video/fal";
 import { isTextAiConfigured } from "@/lib/ai";
 import { POSTER_FORMATS, POSTER_STYLES } from "@/lib/poster";
 import { getOwnedRestaurant } from "../actions";
+import { upcomingOccasions } from "@/lib/occasions";
 import {
+  adaptAction,
+  calendarAction,
+  campaignAction,
   generatePostAction,
   generateStudioVideo,
   getStudioUsage,
+  reelsAction,
   refreshStudioJob,
   reviewReplyAction,
 } from "./actions";
 import { createPoster } from "./poster-actions";
+import { PromoTextResult, kindLabel } from "./text-result";
 
 export const metadata = { title: "Studio de promovare" };
 
@@ -33,7 +39,7 @@ interface PromoText {
   id: string;
   kind: string;
   input: Record<string, unknown>;
-  result: { variants?: string[]; hashtags?: string[]; reply?: string };
+  result: Record<string, unknown>;
   created_at: string;
 }
 
@@ -70,7 +76,7 @@ export default async function StudioPage({
       .select("*")
       .eq("owner_id", user.id)
       .order("created_at", { ascending: false })
-      .limit(5),
+      .limit(8),
     admin
       .from("promo_posters")
       .select("id, format, style, content, svg_url, created_at")
@@ -280,6 +286,164 @@ export default async function StudioPage({
         </form>
       </section>
 
+      {/* ── Calendar de conținut + Campanii sezoniere ── */}
+      <div className="mb-10 grid gap-6 lg:grid-cols-2">
+        <section className="rounded-xl bg-white p-6 shadow-sm">
+          <h2 className="text-lg font-bold">📅 Calendar de conținut</h2>
+          <p className="mt-1 text-sm text-neutral-600">
+            Nu știi ce să postezi? Primești planul pe o lună: 10–12 idei
+            concrete, cu ziua, canalul și tipul fiecărei postări.
+          </p>
+          <form action={calendarAction} className="mt-4 grid gap-3">
+            <input
+              name="business_name"
+              required
+              defaultValue={restaurant?.name ?? ""}
+              placeholder="Numele afacerii *"
+              className={input}
+            />
+            <input
+              name="business_type"
+              placeholder="Tipul afacerii (restaurant, salon...)"
+              className={input}
+            />
+            <select
+              name="month"
+              defaultValue={String((new Date().getMonth() + 1) % 12)}
+              className={input}
+            >
+              {[
+                "Ianuarie", "Februarie", "Martie", "Aprilie", "Mai", "Iunie",
+                "Iulie", "August", "Septembrie", "Octombrie", "Noiembrie", "Decembrie",
+              ].map((name, i) => (
+                <option key={name} value={i}>
+                  {name}
+                </option>
+              ))}
+            </select>
+            <input
+              name="focus"
+              placeholder="Accent special luna asta? (opțional — ex: lansăm meniul de vară)"
+              className={input}
+            />
+            <button className="rounded-lg bg-emerald-600 py-2.5 font-medium text-white hover:bg-emerald-700">
+              Generează planul lunii
+            </button>
+          </form>
+        </section>
+
+        <section className="rounded-xl bg-white p-6 shadow-sm">
+          <h2 className="text-lg font-bold">🎉 Campanii sezoniere</h2>
+          <p className="mt-1 text-sm text-neutral-600">
+            Următoarele ocazii se apropie — alege una și primești conceptul,
+            două postări și textele afișului, gata de folosit.
+          </p>
+          <form action={campaignAction} className="mt-4 grid gap-3">
+            <input
+              name="business_name"
+              required
+              defaultValue={restaurant?.name ?? ""}
+              placeholder="Numele afacerii *"
+              className={input}
+            />
+            <input
+              name="business_type"
+              placeholder="Tipul afacerii (restaurant, salon...)"
+              className={input}
+            />
+            <div className="space-y-2">
+              {upcomingOccasions(new Date(), 3).map((occasion, i) => (
+                <label
+                  key={occasion.slug}
+                  className="flex cursor-pointer items-center gap-3 rounded-lg border border-neutral-200 px-3 py-2.5 text-sm has-checked:border-emerald-600 has-checked:bg-emerald-50/50"
+                >
+                  <input
+                    type="radio"
+                    name="occasion"
+                    value={occasion.slug}
+                    defaultChecked={i === 0}
+                    className="accent-emerald-600"
+                  />
+                  <span className="grow font-medium">{occasion.name}</span>
+                  <span className="text-xs text-neutral-500">
+                    peste {occasion.daysUntil} {occasion.daysUntil === 1 ? "zi" : "zile"}
+                  </span>
+                </label>
+              ))}
+            </div>
+            <button className="rounded-lg bg-emerald-600 py-2.5 font-medium text-white hover:bg-emerald-700">
+              Construiește campania
+            </button>
+          </form>
+        </section>
+      </div>
+
+      {/* ── Adaptor multi-canal + Script Reels ── */}
+      <div className="mb-10 grid gap-6 lg:grid-cols-2">
+        <section className="rounded-xl bg-white p-6 shadow-sm">
+          <h2 className="text-lg font-bold">🔀 Scrii o dată, postezi peste tot</h2>
+          <p className="mt-1 text-sm text-neutral-600">
+            Un singur mesaj → variante pentru Facebook, Instagram, TikTok și
+            Google Business, plus engleză pentru turiști.
+          </p>
+          <form action={adaptAction} className="mt-4 grid gap-3">
+            <input
+              name="business_name"
+              required
+              defaultValue={restaurant?.name ?? ""}
+              placeholder="Numele afacerii *"
+              className={input}
+            />
+            <textarea
+              name="text"
+              required
+              rows={3}
+              placeholder="Mesajul tău (ex: de luni avem meniu nou de prânz, 3 feluri la 35 lei) *"
+              className={input}
+            />
+            <label className="flex items-center gap-2 text-sm">
+              <input type="checkbox" name="english" className="accent-emerald-600" />
+              Adaugă și varianta în engleză
+            </label>
+            <button className="rounded-lg bg-emerald-600 py-2.5 font-medium text-white hover:bg-emerald-700">
+              Adaptează pentru toate canalele
+            </button>
+          </form>
+        </section>
+
+        <section className="rounded-xl bg-white p-6 shadow-sm">
+          <h2 className="text-lg font-bold">🎬 Script de Reels/TikTok</h2>
+          <p className="mt-1 text-sm text-neutral-600">
+            Scenariu de 15–30 secunde pe care îl filmezi singur cu telefonul:
+            hook, cadre, texte pe ecran și sugestie de sunet.
+          </p>
+          <form action={reelsAction} className="mt-4 grid gap-3">
+            <input
+              name="business_name"
+              required
+              defaultValue={restaurant?.name ?? ""}
+              placeholder="Numele afacerii *"
+              className={input}
+            />
+            <input
+              name="business_type"
+              placeholder="Tipul afacerii (restaurant, salon...)"
+              className={input}
+            />
+            <textarea
+              name="subject"
+              required
+              rows={3}
+              placeholder="Despre ce e clipul? (ex: cum se face pizza noastră cu trufe, de la aluat la cuptor) *"
+              className={input}
+            />
+            <button className="rounded-lg bg-emerald-600 py-2.5 font-medium text-white hover:bg-emerald-700">
+              Scrie scenariul
+            </button>
+          </form>
+        </section>
+      </div>
+
       {/* ── Afișe ── */}
       <section id="afise" className="mb-10 rounded-xl bg-white p-6 shadow-sm">
         <h2 className="text-lg font-bold">🖼 Afișe — pentru print sau social media</h2>
@@ -436,37 +600,10 @@ export default async function StudioPage({
             {promoTexts.map((text) => (
               <div key={text.id} className="border-t border-neutral-100 pt-4 first:border-t-0 first:pt-0">
                 <p className="mb-2 text-xs text-neutral-400">
-                  {text.kind === "postare" ? "Postare" : "Răspuns la recenzie"} ·{" "}
+                  {kindLabel(text.kind, text.input)} ·{" "}
                   {new Date(text.created_at).toLocaleString("ro-RO")}
-                  {text.kind === "postare" && text.input.channel
-                    ? ` · ${String(text.input.channel)}`
-                    : ""}
                 </p>
-                {text.result.variants ? (
-                  <div className="space-y-2">
-                    {text.result.variants.map((variant, i) => (
-                      <textarea
-                        key={i}
-                        readOnly
-                        rows={3}
-                        defaultValue={variant}
-                        className="w-full rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2 text-sm"
-                      />
-                    ))}
-                    {text.result.hashtags && text.result.hashtags.length > 0 && (
-                      <p className="text-sm text-emerald-700">
-                        {text.result.hashtags.map((h) => `#${h}`).join(" ")}
-                      </p>
-                    )}
-                  </div>
-                ) : text.result.reply ? (
-                  <textarea
-                    readOnly
-                    rows={3}
-                    defaultValue={text.result.reply}
-                    className="w-full rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2 text-sm"
-                  />
-                ) : null}
+                <PromoTextResult kind={text.kind} result={text.result} />
               </div>
             ))}
           </div>

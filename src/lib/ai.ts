@@ -140,6 +140,298 @@ export async function generatePosterCopy(
   return JSON.parse(textBlock.text) as PosterCopyResult;
 }
 
+// ── Calendar de conținut ─────────────────────────────────────────────────
+
+export interface CalendarIdea {
+  day: number;
+  channel: string;
+  type: string;
+  idea: string;
+}
+
+/** Plan de conținut pe o lună: 10-12 idei de postări cu zile și canale. */
+export async function generateContentCalendar(input: {
+  businessName: string;
+  businessType: string;
+  monthName: string;
+  focus?: string;
+}): Promise<{ ideas: CalendarIdea[] }> {
+  const client = new Anthropic();
+  const response = await client.messages.create({
+    model: model(),
+    max_tokens: 4096,
+    system:
+      "Ești strategul de social media al unei afaceri mici din România. " +
+      "Construiești un plan de conținut pe o lună: idei concrete și variate " +
+      "(nu doar oferte — și behind-the-scenes, echipă, produse, întrebări " +
+      "pentru comunitate, recenzii repostate, educaționale). Fiecare idee e " +
+      "suficient de concretă cât să poată fi transformată direct în postare. " +
+      "Ține cont de sărbătorile și ocaziile românești din luna respectivă.",
+    messages: [
+      {
+        role: "user",
+        content: [
+          `Afacere: ${input.businessName} (${input.businessType || "afacere locală"})`,
+          `Luna: ${input.monthName}`,
+          input.focus ? `Accent special: ${input.focus}` : "",
+          "",
+          "Generează 10-12 idei de postări distribuite pe parcursul lunii.",
+        ]
+          .filter(Boolean)
+          .join("\n"),
+      },
+    ],
+    output_config: {
+      format: {
+        type: "json_schema",
+        schema: {
+          type: "object",
+          properties: {
+            ideas: {
+              type: "array",
+              items: {
+                type: "object",
+                properties: {
+                  day: { type: "integer", description: "Ziua din lună (1-31)." },
+                  channel: {
+                    type: "string",
+                    description: "Canalul recomandat: Facebook, Instagram, TikTok sau Google Business.",
+                  },
+                  type: {
+                    type: "string",
+                    description: "Tipul: ofertă, behind-the-scenes, produs, comunitate, educațional, sărbătoare.",
+                  },
+                  idea: { type: "string", description: "Ideea concretă a postării, 1-2 fraze." },
+                },
+                required: ["day", "channel", "type", "idea"],
+                additionalProperties: false,
+              },
+            },
+          },
+          required: ["ideas"],
+          additionalProperties: false,
+        },
+      },
+    },
+  });
+
+  if (response.stop_reason === "refusal") throw new Error("Cererea nu a putut fi procesată.");
+  const textBlock = response.content.find((b) => b.type === "text");
+  if (!textBlock || textBlock.type !== "text") throw new Error("Răspuns gol de la AI.");
+  const parsed = JSON.parse(textBlock.text) as { ideas: CalendarIdea[] };
+  return { ideas: parsed.ideas.slice(0, 12).sort((a, b) => a.day - b.day) };
+}
+
+// ── Adaptor multi-canal ──────────────────────────────────────────────────
+
+export interface AdaptedContent {
+  facebook: string;
+  instagram: string;
+  tiktok: string;
+  google_business: string;
+  english?: string;
+}
+
+/** Adaptează un text scris o dată pentru toate canalele (+ EN opțional). */
+export async function adaptContent(input: {
+  businessName: string;
+  text: string;
+  includeEnglish: boolean;
+}): Promise<AdaptedContent> {
+  const client = new Anthropic();
+  const response = await client.messages.create({
+    model: model(),
+    max_tokens: 3072,
+    system:
+      "Ești un social media manager român. Primești un mesaj de promovare și " +
+      "îl adaptezi pentru fiecare canal, păstrând sensul dar schimbând forma: " +
+      "Facebook — 2-4 fraze, ton conversațional; Instagram — scurt, aerisit, " +
+      "emoji cu măsură; TikTok — hook puternic în prima frază, limbaj tânăr; " +
+      "Google Business — informativ, cu detalii practice și CTA concret. " +
+      "Fără clișee de reclamă.",
+    messages: [
+      {
+        role: "user",
+        content:
+          `Afacere: ${input.businessName}\nMesajul original: „${input.text}”\n\n` +
+          `Adaptează-l pentru cele 4 canale${input.includeEnglish ? " și adaugă o variantă în engleză (pentru turiști, stil Instagram)" : ""}.`,
+      },
+    ],
+    output_config: {
+      format: {
+        type: "json_schema",
+        schema: {
+          type: "object",
+          properties: {
+            facebook: { type: "string" },
+            instagram: { type: "string" },
+            tiktok: { type: "string" },
+            google_business: { type: "string" },
+            english: {
+              type: ["string", "null"],
+              description: "Varianta în engleză, sau null dacă nu a fost cerută.",
+            },
+          },
+          required: ["facebook", "instagram", "tiktok", "google_business", "english"],
+          additionalProperties: false,
+        },
+      },
+    },
+  });
+
+  if (response.stop_reason === "refusal") throw new Error("Cererea nu a putut fi procesată.");
+  const textBlock = response.content.find((b) => b.type === "text");
+  if (!textBlock || textBlock.type !== "text") throw new Error("Răspuns gol de la AI.");
+  const parsed = JSON.parse(textBlock.text) as AdaptedContent & { english: string | null };
+  return {
+    facebook: parsed.facebook,
+    instagram: parsed.instagram,
+    tiktok: parsed.tiktok,
+    google_business: parsed.google_business,
+    english: input.includeEnglish && parsed.english ? parsed.english : undefined,
+  };
+}
+
+// ── Script de Reels/TikTok ───────────────────────────────────────────────
+
+export interface ReelsScript {
+  hook: string;
+  scenes: { shot: string; action: string; overlay: string }[];
+  audio: string;
+  caption: string;
+}
+
+/** Scenariu de Reel filmabil cu telefonul, cadru cu cadru. */
+export async function generateReelsScript(input: {
+  businessName: string;
+  businessType: string;
+  subject: string;
+}): Promise<ReelsScript> {
+  const client = new Anthropic();
+  const response = await client.messages.create({
+    model: model(),
+    max_tokens: 2048,
+    system:
+      "Ești un creator de conținut video pentru afaceri mici din România. " +
+      "Scrii scenarii de Reels/TikTok de 15-30 de secunde pe care proprietarul " +
+      "le poate filma singur cu telefonul, fără echipament. Hook-ul din primele " +
+      "2 secunde decide totul. Cadrele sunt simple și concrete (ce filmezi, ce " +
+      "se întâmplă, ce text apare pe ecran). Stil autentic, nu corporatist.",
+    messages: [
+      {
+        role: "user",
+        content: `Afacere: ${input.businessName} (${input.businessType || "afacere locală"})\nSubiectul clipului: ${input.subject}\n\nScrie scenariul.`,
+      },
+    ],
+    output_config: {
+      format: {
+        type: "json_schema",
+        schema: {
+          type: "object",
+          properties: {
+            hook: { type: "string", description: "Prima frază/cadru care oprește scroll-ul." },
+            scenes: {
+              type: "array",
+              items: {
+                type: "object",
+                properties: {
+                  shot: { type: "string", description: "Ce filmezi (cadrul)." },
+                  action: { type: "string", description: "Ce se întâmplă în cadru." },
+                  overlay: { type: "string", description: "Textul care apare pe ecran." },
+                },
+                required: ["shot", "action", "overlay"],
+                additionalProperties: false,
+              },
+              description: "3-5 cadre.",
+            },
+            audio: { type: "string", description: "Sugestie de sunet/muzică (tip, nu piesă exactă)." },
+            caption: { type: "string", description: "Descrierea postării, cu 3-5 hashtag-uri." },
+          },
+          required: ["hook", "scenes", "audio", "caption"],
+          additionalProperties: false,
+        },
+      },
+    },
+  });
+
+  if (response.stop_reason === "refusal") throw new Error("Cererea nu a putut fi procesată.");
+  const textBlock = response.content.find((b) => b.type === "text");
+  if (!textBlock || textBlock.type !== "text") throw new Error("Răspuns gol de la AI.");
+  return JSON.parse(textBlock.text) as ReelsScript;
+}
+
+// ── Campanie sezonieră ───────────────────────────────────────────────────
+
+export interface SeasonalCampaign {
+  concept: string;
+  posts: string[];
+  posterHeadline: string;
+  posterSubtitle: string;
+  posterCta: string;
+  hashtags: string[];
+}
+
+/** Mini-campanie pentru o ocazie: concept + 2 postări + textele afișului. */
+export async function generateCampaign(input: {
+  businessName: string;
+  businessType: string;
+  occasionName: string;
+  occasionAngle: string;
+  occasionDate: string;
+}): Promise<SeasonalCampaign> {
+  const client = new Anthropic();
+  const response = await client.messages.create({
+    model: model(),
+    max_tokens: 3072,
+    system:
+      "Ești un marketer român pentru afaceri mici. Construiești mini-campanii " +
+      "pentru ocazii și sărbători: un concept simplu de ofertă/activare " +
+      "potrivit tipului de afacere, două postări (una de anunț cu ~o săptămână " +
+      "înainte, una de reminder în ziua respectivă) și textele unui afiș. " +
+      "Concret și aplicabil, fără clișee.",
+    messages: [
+      {
+        role: "user",
+        content: [
+          `Afacere: ${input.businessName} (${input.businessType || "afacere locală"})`,
+          `Ocazia: ${input.occasionName} (${input.occasionDate})`,
+          `Unghi sugerat: ${input.occasionAngle}`,
+          "",
+          "Construiește campania.",
+        ].join("\n"),
+      },
+    ],
+    output_config: {
+      format: {
+        type: "json_schema",
+        schema: {
+          type: "object",
+          properties: {
+            concept: { type: "string", description: "Conceptul campaniei, 1-2 fraze." },
+            posts: {
+              type: "array",
+              items: { type: "string" },
+              description: "Exact 2 postări: anunțul și reminder-ul din ziua ocaziei.",
+            },
+            posterHeadline: { type: "string", description: "Titlul afișului, max 6 cuvinte." },
+            posterSubtitle: { type: "string" },
+            posterCta: { type: "string", description: "2-4 cuvinte." },
+            hashtags: { type: "array", items: { type: "string" }, description: "4-6 hashtag-uri fără #." },
+          },
+          required: ["concept", "posts", "posterHeadline", "posterSubtitle", "posterCta", "hashtags"],
+          additionalProperties: false,
+        },
+      },
+    },
+  });
+
+  if (response.stop_reason === "refusal") throw new Error("Cererea nu a putut fi procesată.");
+  const textBlock = response.content.find((b) => b.type === "text");
+  if (!textBlock || textBlock.type !== "text") throw new Error("Răspuns gol de la AI.");
+  const parsed = JSON.parse(textBlock.text) as SeasonalCampaign;
+  return { ...parsed, posts: parsed.posts.slice(0, 2), hashtags: parsed.hashtags.slice(0, 6) };
+}
+
 export interface ReviewReplyInput {
   businessName: string;
   rating: number;
