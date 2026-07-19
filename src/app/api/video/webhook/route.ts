@@ -2,6 +2,58 @@ import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { persistVideo } from "@/lib/video/fal";
 
+interface FalWebhookBody {
+  request_id?: string;
+  status?: string;
+  payload?: { video?: { url?: string } };
+  error?: unknown;
+}
+
+/** Finalizează un job din Studio-ul de promovare (promo_videos). */
+async function handlePromoJob(
+  job: { id: string; owner_id: string; status: string },
+  body: FalWebhookBody
+) {
+  const admin = createAdminClient();
+  if (job.status === "done") return NextResponse.json({ ok: true });
+
+  const falVideoUrl = body.payload?.video?.url;
+  if (body.status !== "OK" || !falVideoUrl) {
+    await admin
+      .from("promo_videos")
+      .update({
+        status: "failed",
+        error:
+          typeof body.error === "string" ? body.error : "Generarea a eșuat la furnizor",
+        completed_at: new Date().toISOString(),
+      })
+      .eq("id", job.id);
+    return NextResponse.json({ ok: true });
+  }
+
+  try {
+    const publicUrl = await persistVideo(falVideoUrl, `promo-${job.owner_id}`, job.id);
+    await admin
+      .from("promo_videos")
+      .update({
+        status: "done",
+        result_video_url: publicUrl,
+        completed_at: new Date().toISOString(),
+      })
+      .eq("id", job.id);
+  } catch (e) {
+    await admin
+      .from("promo_videos")
+      .update({
+        status: "failed",
+        error: e instanceof Error ? e.message : "Salvarea clipului a eșuat",
+        completed_at: new Date().toISOString(),
+      })
+      .eq("id", job.id);
+  }
+  return NextResponse.json({ ok: true });
+}
+
 /**
  * Webhook fal.ai — apelat la finalizarea unui job de generare video.
  * Payload: { request_id, status: "OK" | "ERROR", payload | error }.
@@ -33,8 +85,17 @@ export async function POST(request: Request) {
     .eq("provider_request_id", requestId)
     .maybeSingle();
 
+  // Jobul poate fi și din Studio-ul de promovare (tabel separat).
   if (!job) {
-    return NextResponse.json({ error: "Job necunoscut" }, { status: 404 });
+    const { data: promoJob } = await admin
+      .from("promo_videos")
+      .select("*")
+      .eq("provider_request_id", requestId)
+      .maybeSingle();
+    if (!promoJob) {
+      return NextResponse.json({ error: "Job necunoscut" }, { status: 404 });
+    }
+    return handlePromoJob(promoJob, body);
   }
   if (job.status === "done") {
     return NextResponse.json({ ok: true }); // livrare duplicată — idempotent

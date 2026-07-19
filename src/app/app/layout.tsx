@@ -37,6 +37,9 @@ export default async function DashboardLayout({
             <Link href="/app/video" className="hover:text-emerald-600">
               Video AI
             </Link>
+            <Link href="/app/studio" className="hover:text-emerald-600">
+              Studio
+            </Link>
             <Link href="/app/abonament" className="hover:text-emerald-600">
               Abonament
             </Link>

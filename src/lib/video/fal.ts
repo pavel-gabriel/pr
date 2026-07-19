@@ -9,6 +9,44 @@ export const DEFAULT_FOOD_PROMPT =
   "gentle steam rising, shallow depth of field, warm appetizing light, " +
   "no hands, no people";
 
+/** Preset-uri de prompt pentru Studio-ul de promovare, pe tip de subiect. */
+export const STUDIO_PROMPTS: Record<string, { label: string; prompt: string }> = {
+  locatie: {
+    label: "Locație / interior",
+    prompt:
+      "Smooth cinematic push-in through the space, warm inviting light, " +
+      "professional promotional video, steady camera, no people appearing or morphing",
+  },
+  produs: {
+    label: "Produs / obiect",
+    prompt:
+      "Slow elegant orbit around the product, premium studio lighting, " +
+      "commercial advertisement look, shallow depth of field, clean background",
+  },
+  mancare: {
+    label: "Mâncare / băutură",
+    prompt: DEFAULT_FOOD_PROMPT,
+  },
+  eveniment: {
+    label: "Eveniment / atmosferă",
+    prompt:
+      "Dynamic cinematic sweep, vibrant festive atmosphere, energetic but smooth " +
+      "camera movement, promotional event video, warm colorful light",
+  },
+  joc: {
+    label: "Joc / divertisment",
+    prompt:
+      "Playful dynamic camera movement, exciting promotional video, vivid colors, " +
+      "dramatic lighting, engaging commercial style",
+  },
+  altele: {
+    label: "Altceva",
+    prompt:
+      "Smooth cinematic camera movement, professional promotional video, " +
+      "appealing commercial look, balanced warm lighting",
+  },
+};
+
 export function isVideoConfigured(): boolean {
   return Boolean(process.env.FAL_KEY);
 }
