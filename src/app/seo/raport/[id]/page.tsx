@@ -2,7 +2,9 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { SeoAudit, SeoCheck } from "@/lib/types";
+import { SEO_MONITOR_PRICES } from "@/lib/seo/monitor";
 import { requestOffer } from "../../actions";
+import { startMonitorCheckout } from "../../monitor-actions";
 
 export const metadata = { title: "Raport SEO" };
 
@@ -134,6 +136,80 @@ export default async function ReportPage({
                 ))}
               </section>
             )}
+
+            {/* Monitorizare cu raport lunar */}
+            <section className="mt-8 rounded-xl bg-white p-6 shadow-sm">
+              <h2 className="text-lg font-bold">
+                📈 Urmărește-ți scorul în timp
+              </h2>
+              <p className="mt-1 text-sm text-neutral-600">
+                Un audit e o poză de moment. Monitorizarea îți arată dacă
+                scorul crește sau scade — cu raport complet și comparație pe
+                email, fără să miști un deget.
+              </p>
+              <form
+                action={startMonitorCheckout}
+                className="mt-4 grid gap-3 sm:grid-cols-2"
+              >
+                <input type="hidden" name="audit_id" value={audit.id} />
+                <label className="flex cursor-pointer flex-col rounded-xl border-2 border-neutral-200 p-4 has-checked:border-emerald-600 has-checked:bg-emerald-50/40">
+                  <span className="flex items-center gap-2">
+                    <input
+                      type="radio"
+                      name="billing"
+                      value="subscription"
+                      defaultChecked
+                      className="accent-emerald-600"
+                    />
+                    <span className="font-semibold">Abonament lunar</span>
+                    <span className="ml-auto rounded-full bg-emerald-600 px-2 py-0.5 text-xs font-semibold text-white">
+                      recomandat
+                    </span>
+                  </span>
+                  <span className="mt-1 text-2xl font-bold">
+                    {SEO_MONITOR_PRICES.monthlyRon} lei
+                    <span className="text-sm font-normal text-neutral-500">/lună</span>
+                  </span>
+                  <span className="mt-1 text-xs text-neutral-500">
+                    Audit complet automat în fiecare lună + evoluția scorului.
+                    Anulezi oricând.
+                  </span>
+                </label>
+                <label className="flex cursor-pointer flex-col rounded-xl border-2 border-neutral-200 p-4 has-checked:border-emerald-600 has-checked:bg-emerald-50/40">
+                  <span className="flex items-center gap-2">
+                    <input
+                      type="radio"
+                      name="billing"
+                      value="one_time"
+                      className="accent-emerald-600"
+                    />
+                    <span className="font-semibold">Raport unic, la cerere</span>
+                  </span>
+                  <span className="mt-1 text-2xl font-bold">
+                    {SEO_MONITOR_PRICES.oneTimeRon} lei
+                    <span className="text-sm font-normal text-neutral-500"> o dată</span>
+                  </span>
+                  <span className="mt-1 text-xs text-neutral-500">
+                    Un audit nou acum, cu comparație față de raportul curent.
+                  </span>
+                </label>
+                <input
+                  name="email"
+                  type="email"
+                  required
+                  defaultValue={audit.email}
+                  placeholder="Emailul pentru rapoarte *"
+                  className="rounded-lg border border-neutral-300 px-3 py-2 text-sm sm:col-span-2"
+                />
+                <button className="rounded-lg bg-emerald-600 py-2.5 font-medium text-white hover:bg-emerald-700 sm:col-span-2">
+                  Activează monitorizarea →
+                </button>
+                <p className="text-xs text-neutral-400 sm:col-span-2">
+                  Plata securizată prin Stripe. Primul raport se generează
+                  imediat după plată.
+                </p>
+              </form>
+            </section>
 
             {/* CTA ofertă */}
             <section className="mt-8 rounded-xl border-2 border-emerald-600 bg-white p-6 shadow-sm">
