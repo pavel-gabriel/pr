@@ -78,6 +78,48 @@ async function textsUsedThisMonth(userId: string): Promise<number> {
   return count ?? 0;
 }
 
+// ── Freemium: prima încercare din fiecare unealtă e gratuită ─────────────
+
+const TOOL_LABELS: Record<string, string> = {
+  postare: "de postări",
+  recenzie: "de răspunsuri la recenzii",
+  calendar: "a calendarului de conținut",
+  adaptare: "a adaptorului multi-canal",
+  reels: "de scripturi Reels",
+  campanie: "de campanii sezoniere",
+  anunt: "de texte pentru afișe",
+};
+
+/**
+ * Cota de texte: pe planul gratuit (trial), fiecare unealtă are o singură
+ * încercare — pe viață, nu pe lună. Planurile plătite au cote lunare.
+ */
+export async function checkTextQuota(userId: string, kind: string) {
+  const plan = await currentPlan();
+  const admin = createAdminClient();
+
+  if (plan === "trial") {
+    const { count } = await admin
+      .from("promo_texts")
+      .select("id", { count: "exact", head: true })
+      .eq("owner_id", userId)
+      .eq("kind", kind);
+    if ((count ?? 0) >= 1) {
+      redirect(
+        `/app/studio?error=${encodeURIComponent(`Încercarea gratuită ${TOOL_LABELS[kind] ?? "a acestei unelte"} a fost folosită — pentru generări nelimitate lunar, activează planul Start sau Pro din contul tău.`)}`
+      );
+    }
+    return;
+  }
+
+  const used = await textsUsedThisMonth(userId);
+  if (used >= PLANS[plan].textsPerMonth) {
+    redirect(
+      `/app/studio?error=${encodeURIComponent(`Ai folosit toate cele ${PLANS[plan].textsPerMonth} generări de text din planul ${PLANS[plan].name} luna aceasta.`)}`
+    );
+  }
+}
+
 export async function getStudioUsage() {
   const user = await requireUser();
   const plan = await currentPlan();
@@ -87,6 +129,7 @@ export async function getStudioUsage() {
   ]);
   return {
     plan,
+    isFreeTier: plan === "trial",
     videosUsed,
     videosLimit: PLANS[plan].videosPerMonth,
     textsUsed,
@@ -112,11 +155,26 @@ export async function generateStudioVideo(formData: FormData) {
     String(formData.get("aspect_ratio")) === "9:16" ? "9:16" : "16:9";
 
   const plan = await currentPlan();
-  const used = await videosUsedThisMonth(user.id);
-  if (used >= PLANS[plan].videosPerMonth) {
-    redirect(
-      `/app/studio?error=${encodeURIComponent(`Ai folosit toate cele ${PLANS[plan].videosPerMonth} generări video din planul ${PLANS[plan].name} luna aceasta.`)}`
-    );
+  if (plan === "trial") {
+    // Freemium: primul clip promoțional e gratuit, restul cer plan plătit.
+    const adminQuota = createAdminClient();
+    const { count } = await adminQuota
+      .from("promo_videos")
+      .select("id", { count: "exact", head: true })
+      .eq("owner_id", user.id)
+      .neq("status", "failed");
+    if ((count ?? 0) >= 1) {
+      redirect(
+        `/app/studio?error=${encodeURIComponent("Primul clip promoțional e gratuit — pentru mai multe, activează planul Start sau Pro din contul tău.")}`
+      );
+    }
+  } else {
+    const used = await videosUsedThisMonth(user.id);
+    if (used >= PLANS[plan].videosPerMonth) {
+      redirect(
+        `/app/studio?error=${encodeURIComponent(`Ai folosit toate cele ${PLANS[plan].videosPerMonth} generări video din planul ${PLANS[plan].name} luna aceasta.`)}`
+      );
+    }
   }
 
   // Upload-ul pozelor sursă (prima poză e cadrul de pornire al clipului).
@@ -234,16 +292,6 @@ export async function refreshStudioJob(formData: FormData) {
 
 // ── Texte de promovare ────────────────────────────────────────────────────
 
-async function checkTextQuota(userId: string) {
-  const plan = await currentPlan();
-  const used = await textsUsedThisMonth(userId);
-  if (used >= PLANS[plan].textsPerMonth) {
-    redirect(
-      `/app/studio?error=${encodeURIComponent(`Ai folosit toate cele ${PLANS[plan].textsPerMonth} generări de text din planul ${PLANS[plan].name} luna aceasta.`)}`
-    );
-  }
-}
-
 export async function generatePostAction(formData: FormData) {
   const user = await requireUser();
   if (!isTextAiConfigured()) {
@@ -251,7 +299,7 @@ export async function generatePostAction(formData: FormData) {
       `/app/studio?error=${encodeURIComponent("Generarea de texte nu este configurată încă (lipsește cheia Anthropic).")}`
     );
   }
-  await checkTextQuota(user.id);
+  await checkTextQuota(user.id, "postare");
 
   const input = {
     businessName: String(formData.get("business_name") ?? "").trim(),
@@ -290,7 +338,7 @@ export async function calendarAction(formData: FormData) {
   if (!isTextAiConfigured()) {
     redirect(`/app/studio?error=${encodeURIComponent("Generarea de texte nu este configurată încă (lipsește cheia Anthropic).")}`);
   }
-  await checkTextQuota(user.id);
+  await checkTextQuota(user.id, "calendar");
 
   const monthNames = [
     "ianuarie", "februarie", "martie", "aprilie", "mai", "iunie",
@@ -329,7 +377,7 @@ export async function adaptAction(formData: FormData) {
   if (!isTextAiConfigured()) {
     redirect(`/app/studio?error=${encodeURIComponent("Generarea de texte nu este configurată încă (lipsește cheia Anthropic).")}`);
   }
-  await checkTextQuota(user.id);
+  await checkTextQuota(user.id, "adaptare");
 
   const input = {
     businessName: String(formData.get("business_name") ?? "").trim(),
@@ -362,7 +410,7 @@ export async function reelsAction(formData: FormData) {
   if (!isTextAiConfigured()) {
     redirect(`/app/studio?error=${encodeURIComponent("Generarea de texte nu este configurată încă (lipsește cheia Anthropic).")}`);
   }
-  await checkTextQuota(user.id);
+  await checkTextQuota(user.id, "reels");
 
   const input = {
     businessName: String(formData.get("business_name") ?? "").trim(),
@@ -395,7 +443,7 @@ export async function campaignAction(formData: FormData) {
   if (!isTextAiConfigured()) {
     redirect(`/app/studio?error=${encodeURIComponent("Generarea de texte nu este configurată încă (lipsește cheia Anthropic).")}`);
   }
-  await checkTextQuota(user.id);
+  await checkTextQuota(user.id, "campanie");
 
   const occasion = findOccasion(String(formData.get("occasion") ?? ""));
   const businessName = String(formData.get("business_name") ?? "").trim();
@@ -436,7 +484,7 @@ export async function reviewReplyAction(formData: FormData) {
       `/app/studio?error=${encodeURIComponent("Generarea de texte nu este configurată încă (lipsește cheia Anthropic).")}`
     );
   }
-  await checkTextQuota(user.id);
+  await checkTextQuota(user.id, "recenzie");
 
   const input = {
     businessName: String(formData.get("business_name") ?? "").trim(),

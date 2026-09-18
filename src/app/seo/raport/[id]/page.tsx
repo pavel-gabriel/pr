@@ -41,10 +41,10 @@ export default async function ReportPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ sent?: string; error?: string }>;
+  searchParams: Promise<{ sent?: string; error?: string; gratuit?: string }>;
 }) {
   const { id } = await params;
-  const { sent, error } = await searchParams;
+  const { sent, error, gratuit } = await searchParams;
 
   if (!/^[0-9a-f-]{36}$/.test(id)) notFound();
 
@@ -96,6 +96,22 @@ export default async function ReportPage({
           </div>
         ) : (
           <>
+            {gratuit === "folosit" && (
+              <div className="mb-6 rounded-xl border-2 border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">
+                <p className="font-semibold">
+                  Analiza gratuită pentru acest site a fost deja folosită.
+                </p>
+                <p className="mt-1">
+                  Mai jos e cel mai recent raport al tău. Pentru o analiză
+                  nouă, alege raportul la cerere sau abonamentul de
+                  monitorizare din secțiunea{" "}
+                  <a href="#monitorizare" className="font-medium underline">
+                    „Urmărește-ți scorul în timp”
+                  </a>
+                  .
+                </p>
+              </div>
+            )}
             {/* Scor */}
             <div className="rounded-xl bg-white p-8 text-center shadow-sm">
               <p className="text-sm uppercase tracking-wide text-neutral-500">
@@ -138,7 +154,7 @@ export default async function ReportPage({
             )}
 
             {/* Monitorizare cu raport lunar */}
-            <section className="mt-8 rounded-xl bg-white p-6 shadow-sm">
+            <section id="monitorizare" className="mt-8 rounded-xl bg-white p-6 shadow-sm">
               <h2 className="text-lg font-bold">
                 📈 Urmărește-ți scorul în timp
               </h2>
