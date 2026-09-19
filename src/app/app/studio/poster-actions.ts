@@ -13,6 +13,7 @@ import {
   type PosterStyle,
 } from "@/lib/poster";
 import { generatePosterCopy, isTextAiConfigured } from "@/lib/ai";
+import { checkTextQuota } from "./actions";
 
 export async function createPoster(formData: FormData) {
   const supabase = await createClient();
@@ -46,11 +47,21 @@ export async function createPoster(formData: FormData) {
         `/app/studio?error=${encodeURIComponent("Scrie măcar titlul afișului — generarea de texte cu AI nu e configurată încă.")}#afise`
       );
     }
+    // Textele de afiș generate cu AI intră în aceeași logică de cote
+    // (prima încercare gratuită, apoi plan plătit).
+    await checkTextQuota(user.id, "anunt");
     try {
       const copy = await generatePosterCopy(businessName, brief);
       headline = copy.headline;
       subtitle = subtitle || copy.subtitle;
       cta = cta || copy.cta;
+      const adminCopy = createAdminClient();
+      await adminCopy.from("promo_texts").insert({
+        owner_id: user.id,
+        kind: "anunt",
+        input: { businessName, brief },
+        result: copy,
+      });
     } catch (e) {
       redirect(
         `/app/studio?error=${encodeURIComponent(e instanceof Error ? e.message : "Generarea textelor a eșuat.")}#afise`

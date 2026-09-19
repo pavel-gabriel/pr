@@ -33,7 +33,28 @@ export async function POST(request: Request) {
 
   const admin = createAdminClient();
 
+  /** Abonamentele de monitorizare SEO (metadata.kind = seo_monitor). */
+  async function syncSeoMonitorSub(sub: Stripe.Subscription) {
+    const monitorId = sub.metadata?.monitor_id;
+    if (!monitorId) return;
+    const periodEnd = sub.items.data[0]?.current_period_end;
+    const active = ["active", "trialing"].includes(sub.status);
+    await admin
+      .from("seo_monitors")
+      .update({
+        status: active ? "active" : "canceled",
+        stripe_customer_id:
+          typeof sub.customer === "string" ? sub.customer : sub.customer.id,
+        stripe_subscription_id: sub.id,
+        paid_until: periodEnd ? new Date(periodEnd * 1000).toISOString() : null,
+      })
+      .eq("id", monitorId);
+  }
+
   async function syncSubscription(sub: Stripe.Subscription) {
+    if (sub.metadata?.kind === "seo_monitor") {
+      return syncSeoMonitorSub(sub);
+    }
     const restaurantId = sub.metadata?.restaurant_id;
     const plan = sub.metadata?.plan === "pro" ? "pro" : "start";
     if (!restaurantId) return;
@@ -71,6 +92,23 @@ export async function POST(request: Request) {
       break;
     case "checkout.session.completed": {
       const session = event.data.object;
+      // Plata unică pentru un raport SEO la cerere → monitorul devine activ;
+      // raportul se generează la prima vizită a paginii monitorului.
+      if (
+        session.metadata?.kind === "seo_monitor" &&
+        session.mode === "payment" &&
+        session.payment_status === "paid"
+      ) {
+        await admin
+          .from("seo_monitors")
+          .update({
+            status: "active",
+            stripe_customer_id:
+              typeof session.customer === "string" ? session.customer : null,
+          })
+          .eq("id", session.metadata.monitor_id)
+          .eq("status", "pending_payment");
+      }
       if (session.subscription) {
         const sub = await stripe.subscriptions.retrieve(
           typeof session.subscription === "string"

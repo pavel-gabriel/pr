@@ -44,19 +44,43 @@ export async function createAudit(formData: FormData) {
 
   const admin = createAdminClient();
 
-  // Rate limiting: un audit per (url, email) pe zi — refolosim raportul recent.
-  const dayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-  const { data: recent } = await admin
+  // Freemium: prima analiză a unui site e gratuită. O nouă analiză pentru
+  // același site (host) și același email trece pe variantele plătite —
+  // raport unic la cerere sau abonament de monitorizare.
+  const host = new URL(url).hostname.replace(/^www\./, "");
+  const { data: priorAudits } = await admin
     .from("seo_audits")
-    .select("id, status")
-    .eq("url", url)
+    .select("id, url, status, created_at")
     .eq("email", email)
-    .gte("created_at", dayAgo)
+    .neq("status", "failed")
     .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-  if (recent && recent.status !== "failed") {
-    redirect(`/seo/raport/${recent.id}`);
+    .limit(50);
+  const sameHost = (priorAudits ?? []).find((a) => {
+    try {
+      return new URL(a.url).hostname.replace(/^www\./, "") === host;
+    } catch {
+      return false;
+    }
+  });
+  if (sameHost) {
+    // Are deja monitorizare activă? Îl ducem direct la istoricul lui.
+    const { data: monitors } = await admin
+      .from("seo_monitors")
+      .select("id, url")
+      .eq("email", email)
+      .eq("status", "active")
+      .limit(20);
+    const activeMonitor = (monitors ?? []).find((m) => {
+      try {
+        return new URL(m.url).hostname.replace(/^www\./, "") === host;
+      } catch {
+        return false;
+      }
+    });
+    if (activeMonitor) {
+      redirect(`/seo/monitor/${activeMonitor.id}`);
+    }
+    redirect(`/seo/raport/${sameHost.id}?gratuit=folosit`);
   }
 
   const { data: audit, error } = await admin

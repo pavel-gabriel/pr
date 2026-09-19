@@ -6,6 +6,13 @@ Platforma de servicii digitale a [FTF Consulting](https://ftfconsulting.ro) (CAE
    din pozele preparatelor (fal.ai / Kling image-to-video) — abonament lunar.
 2. **Audit SEO self-service** — clientul introduce URL-ul, primește raport cu
    scor și recomandări; lead-urile de implementare ajung în `service_requests`.
+   **Monitorizare SEO monetizată**: din raport, clientul activează tracking
+   cu raport lunar pe email (abonament Stripe) sau un raport unic la cerere
+   (plată o singură dată) — prețurile sunt în `src/lib/seo/monitor.ts` și merg
+   inline către Stripe (fără price ID-uri). Rapoartele scadente le generează
+   `/api/seo/cron` (zilnic, protejat cu `CRON_SECRET`; configurat pentru
+   Vercel Cron în `vercel.json` — pe VPS: un cron care face
+   `curl "$SITE/api/seo/cron?secret=$CRON_SECRET"`).
    **Studio de promovare** (`/app/studio`): video promoțional din poze pentru
    orice afacere (locație/produs/eveniment), texte de promovare și răspunsuri
    la recenzii cu AI (Claude), plus **afișe generate** (A4 print / pătrat /

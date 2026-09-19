@@ -34,7 +34,8 @@ export default async function SeoPage({
         <p className="mt-3 text-neutral-600">
           Introdu adresa site-ului tău și primești pe loc un raport cu scor,
           problemele care te țin pe loc în Google și recomandări concrete de
-          rezolvare. Fără obligații.
+          rezolvare. Prima analiză a unui site e gratuită — apoi poți urmări
+          evoluția cu rapoarte la cerere sau abonament lunar.
         </p>
 
         {error && (

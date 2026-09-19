@@ -108,12 +108,21 @@ export default async function StudioPage({
           </p>
         </div>
         <div className="flex gap-2 text-sm">
-          <span className="rounded-full bg-emerald-50 px-3 py-1.5 font-medium text-emerald-700">
-            🎬 {Math.max(0, usage.videosLimit - usage.videosUsed)}/{usage.videosLimit} video
-          </span>
-          <span className="rounded-full bg-emerald-50 px-3 py-1.5 font-medium text-emerald-700">
-            ✍️ {Math.max(0, usage.textsLimit - usage.textsUsed)}/{usage.textsLimit} texte
-          </span>
+          {usage.isFreeTier ? (
+            <span className="rounded-full bg-amber-50 px-3 py-1.5 font-medium text-amber-700">
+              🎁 Gratuit: câte o încercare din fiecare unealtă — planurile
+              Start/Pro deschid cotele lunare
+            </span>
+          ) : (
+            <>
+              <span className="rounded-full bg-emerald-50 px-3 py-1.5 font-medium text-emerald-700">
+                🎬 {Math.max(0, usage.videosLimit - usage.videosUsed)}/{usage.videosLimit} video
+              </span>
+              <span className="rounded-full bg-emerald-50 px-3 py-1.5 font-medium text-emerald-700">
+                ✍️ {Math.max(0, usage.textsLimit - usage.textsUsed)}/{usage.textsLimit} texte
+              </span>
+            </>
+          )}
         </div>
       </div>
 
